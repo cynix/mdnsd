@@ -175,13 +175,13 @@ cache_process(struct rr *rr)
 			if (rr_rdata_cmp(rr, rr_aux) == 0) {
 				/* A goodbye RR */
 				if (rr->ttl == 0) {
-					log_warnx("cache_process: goodbye %s",
+					log_info("cache_process: goodbye %s",
 					    rrs_str(&rr->rrs));
 					cache_delete(rr_aux);
 					return (0);
 				}
 				/* Cache refresh */
-				log_warnx("cache_process: refresh %s",
+				log_info("cache_process: refresh %s",
 				    rrs_str(&rr->rrs));
 				rr_aux->ttl = rr->ttl;
 				rr_aux->revision = 0;
