@@ -31,6 +31,8 @@
 #include <event.h>
 #include <string.h>
 
+#include <openbsd-compat.h>
+
 #define MAXCHARSTR	MAXHOSTNAMELEN
 #define MAXLABELLEN	64
 #define MAXPROTOLEN	4

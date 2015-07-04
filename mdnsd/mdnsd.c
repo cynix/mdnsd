@@ -46,7 +46,6 @@ void		fetchmyname(char [MAXHOSTNAMELEN]);
 void		fetchhinfo(struct hinfo *);
 
 struct mdnsd_conf	*conf = NULL;
-extern char		*malloc_options;
 
 __dead void
 usage(void)
@@ -230,7 +229,6 @@ main(int argc, char *argv[])
 		switch (ch) {
 		case 'd':
 			debug = 1;
-			malloc_options = "AFGJPX";
 			break;
 		case 'v':
 			display_version();

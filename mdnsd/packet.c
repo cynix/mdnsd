@@ -967,7 +967,7 @@ pkt_parse_rr(u_int8_t **pbuf, u_int16_t *len, struct rr *rr)
 	if (us & CACHEFLUSH_MSK)
 		rr->flags |= RR_FLAG_CACHEFLUSH;
 	rr->rrs.class  = us & CLASS_MSK;
-	if (rr->rrs.class != C_ANY && rr->rrs.class != C_IN) {
+	if (rr->rrs.class != C_ANY && rr->rrs.class != C_IN && rr->rrs.type != T_OPT) {
 		log_debug("pkt_parse_rr: %s (%s) Invalid packet class %u",
 		    rr_type_name(rr->rrs.type), rr->rrs.dname, rr->rrs.class);
 		return (-1);
@@ -1034,6 +1034,7 @@ pkt_parse_rr(u_int8_t **pbuf, u_int16_t *len, struct rr *rr)
 			return (-1);
 		break;
 	case T_AAAA:
+	case T_OPT:
 	case T_NSEC:
 		break;
 	default:
