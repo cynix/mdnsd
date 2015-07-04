@@ -1,0 +1,12 @@
+---
+TimeCapsule:
+  - service: device-info
+    protocol: tcp
+    text: 'model=TimeCapsule8,119'
+  - service: afpovertcp
+    protocol: tcp
+    port: 548
+  - service: adisk
+    protocol: tcp
+    port: 548
+    text: 'dk0=adVN=Backups,adVF=0x81,adVU=9cddd56a-37cc-457b-aec8-8d7a016989bf'
