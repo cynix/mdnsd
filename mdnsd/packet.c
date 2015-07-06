@@ -67,8 +67,10 @@ int		 pkt_handle_qst(struct pkt *);
 ssize_t		 serialize_rr(struct rr *, u_int8_t *, u_int16_t);
 ssize_t		 serialize_qst(struct question *, u_int8_t *, u_int16_t);
 ssize_t		 serialize_dname(u_int8_t *, u_int16_t, char [MAXHOSTNAMELEN], int);
+ssize_t		 serialize_txt(u_int8_t *, u_int16_t, char [MAXCHARSTR]);
 ssize_t		 serialize_rdata(struct rr *, u_int8_t *, u_int16_t);
 int		 rr_parse_dname(u_int8_t *, u_int16_t, char [MAXHOSTNAMELEN]);
+int		 rr_parse_txt(u_int8_t *, u_int16_t, char [MAXCHARSTR]);
 ssize_t		 charstr(char [MAXCHARSTR], u_int8_t *, u_int16_t);
 void		 header_htons(HEADER *);
 void		 header_ntohs(HEADER *);
@@ -1013,7 +1015,8 @@ pkt_parse_rr(u_int8_t **pbuf, u_int16_t *len, struct rr *rr)
 			return (-1);
 		break;
 	case T_TXT:
-		if ((n = charstr(rr->rdata.TXT, *pbuf, rdlen)) == -1)
+		if (rr_parse_txt(*pbuf, rdlen,
+		    rr->rdata.TXT) == -1)
 			return (-1);
 		break;
 	case T_NS:
@@ -1196,6 +1199,50 @@ rr_parse_dname(u_int8_t *buf, u_int16_t len, char dname[MAXHOSTNAMELEN])
 	return (0);
 }
 
+int
+rr_parse_txt(u_int8_t *buf, u_int16_t len, char txt[MAXCHARSTR])
+{
+	char *ptxt = txt;
+	u_int16_t avail = MAXCHARSTR - 1;
+
+	while (len != 0) {
+		u_int16_t slen = *buf++;
+		--len;
+
+		if (slen > len) {
+			log_warnx("rr_parse_txt: malformed record (%u > %u)",
+				slen, len);
+			goto done;
+		}
+
+		if (slen > avail) {
+			log_warnx("rr_parse_txt: entry too long (%u > %u)",
+				slen, avail);
+			goto done;
+		}
+
+		memcpy(ptxt, buf, slen);
+
+		buf += slen;
+		len -= slen;
+
+		ptxt += slen;
+		avail -= slen;
+
+		/* add entry separator */
+		*ptxt++ = '\1';
+		--avail;
+	}
+
+done:
+	/* remove trailing entry separator */
+	if (ptxt != txt && *(ptxt - 1) == '\1')
+		--ptxt;
+
+	*ptxt = '\0';
+	return (0);
+}
+
 ssize_t
 serialize_dname(u_int8_t *buf, u_int16_t len, char dname[MAXHOSTNAMELEN],
     int compress)
@@ -1249,6 +1296,38 @@ serialize_dname(u_int8_t *buf, u_int16_t len, char dname[MAXHOSTNAMELEN],
 }
 
 ssize_t
+serialize_txt(u_int8_t *buf, u_int16_t len, char txt[MAXCHARSTR])
+{
+	char *end;
+	char *tbuf = txt;
+	u_int8_t tlen;
+	u_int8_t *pbuf = buf;
+
+	do {
+		if ((end = strchr(tbuf, '\1')) == NULL) {
+			if ((end = strchr(tbuf, '\0')) == NULL)
+				fatalx("serialize_txt: bad txt");
+		}
+
+		tlen  = end - tbuf;
+		if (tlen > len)
+			return (-1);
+		*pbuf++ = tlen;
+		memcpy(pbuf, tbuf, tlen);
+		len  -= tlen;
+		pbuf += tlen;
+		tbuf  = end + 1;
+	} while (*end != '\0');
+
+	if (len == 0)
+		return (-1);
+	*pbuf++ = '\0';		/* null terminate txt */
+	len--;
+
+	return (pbuf - buf);
+}
+
+ssize_t
 serialize_rdata(struct rr *rr, u_int8_t *buf, u_int16_t len)
 {
 	u_int8_t	*prdlen, *pbuf = buf;
@@ -1279,14 +1358,24 @@ serialize_rdata(struct rr *rr, u_int8_t *buf, u_int16_t len)
 		len  -= oslen;
 		break;
 	case T_PTR:
+		prdlen = pbuf;
+		/* jump over rdlen */
+		pbuf += INT16SZ;
+		len  -= INT16SZ;
+		if ((n = serialize_dname(pbuf, len,
+		    rr->rdata.PTR, 1)) == -1)
+			return (-1);
+		rdlen = n;
+		pbuf += rdlen;
+		len  -= rdlen;
+		PUTSHORT(rdlen, prdlen);
+		break;
 	case T_TXT:
 		prdlen = pbuf;
 		/* jump over rdlen */
 		pbuf += INT16SZ;
 		len  -= INT16SZ;
-		/* NOTE rr->rdata.PTR == rr->rdata.TXT */
-		if ((n = serialize_dname(pbuf, len,
-		    rr->rdata.PTR, 1)) == -1)
+		if ((n = serialize_txt(pbuf, len, rr->rdata.TXT)) == -1)
 			return (-1);
 		rdlen = n;
 		pbuf += rdlen;
