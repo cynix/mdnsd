@@ -1210,13 +1210,13 @@ rr_parse_txt(u_int8_t *buf, u_int16_t len, char txt[MAXCHARSTR])
 		--len;
 
 		if (slen > len) {
-			log_warnx("rr_parse_txt: malformed record (%u > %u)",
+			log_debug("rr_parse_txt: malformed record (%u > %u)",
 				slen, len);
 			goto done;
 		}
 
 		if (slen > avail) {
-			log_warnx("rr_parse_txt: entry too long (%u > %u)",
+			log_debug("rr_parse_txt: entry too long (%u > %u)",
 				slen, avail);
 			goto done;
 		}
